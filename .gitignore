@@ -1,0 +1,12 @@
+.DS_Store
+.Python
+*.swp
+__pycache__
+.ipynb_checkpoints/
+timbre_recognition/datasets/
+timbre_recognition/lib/
+timbre_recognition/bin/
+proposal/
+references/
+thesis/
+

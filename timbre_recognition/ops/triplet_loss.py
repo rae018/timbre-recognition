@@ -5,8 +5,6 @@ from __future__ import unicode_literals
 
 import tensorflow as tf
 
-# ==============================================================================
-
 def _pairwise_l2_distances(embeddings, squared=False):
   """Compute the 2-D matrix of l2 distances between all the embeddings.
   
@@ -445,8 +443,3 @@ def triplet_semihard_loss(labels, embeddings, margin=1.0):
     name='triplet_semihard_loss')
 
   return triplet_loss
-
-
-
-  
-  

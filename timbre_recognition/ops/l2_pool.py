@@ -1,7 +1,6 @@
 import tensorflow as tf
 from timbre_recognition.ops.arg_scope import add_arg_scope
 
-# ==============================================================================
 
 @add_arg_scope
 def l2_pool(inputs, ksize, strides, padding, data_format='NHWC', name=None):

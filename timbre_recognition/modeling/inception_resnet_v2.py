@@ -557,28 +557,3 @@ def inception_resnet_v2(inputs, kernel_module, num_classes=50, embed_dim=None,
         embedding = tf.nn.l2_normalize(logits)
         endpoints['Embedding'] = embedding
   return embedding, endpoints
-
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-                                 
-  

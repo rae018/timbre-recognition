@@ -25,7 +25,4 @@ def inception_resnet_v2_train(inputs, labels, kernel_module, step):
   gradients = tape.gradient(triplet_loss, kernel_module.trainable_variables)
   optimizer.apply_gradients(zip(gradients, kernel_module.trainable_variables))
   
-  # Possibly add exponential moving average and add summaries
-  
-
-
+  # Possibly add exponential moving average

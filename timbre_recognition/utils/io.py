@@ -90,8 +90,4 @@ def load_esc50_dataset(path):
   filenames = tf.io.match_filenames_once(path + '*.wav').value()
   data = tf.concat([load_wav_file_tf(x)[0] for x in filenames], axis=0)
   labels = tf.convert_to_tensor([parse_esc50_filename(x.numpy()) for x in filenames])
-  return data, labels
-    
-    
-        
-    
+  return data, labels  

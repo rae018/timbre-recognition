@@ -54,7 +54,7 @@ def main():
   accuracies = evaluate_model('inception_resnet_v2', 'esc-50', cfg.DATASET.PATH, kernel_module, thresholds)
   for i in range(len(thresholds)):
     print('Accuracy for threshold {}: {}'.format(thresholds[i], accuracies[i]))
-    print('EVAULATION COMPLETE')
+  print('EVAULATION COMPLETE')
     
 
 if __name__ == '__main__':

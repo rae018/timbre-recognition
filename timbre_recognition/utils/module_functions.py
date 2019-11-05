@@ -17,7 +17,6 @@ def compute_num_params(module):
   
   Returns:
     - params: An `int32` `tf.Tensor` speicifying the number of params
-  
   """
   params = 0
   for k, v in module.__dict__.items():

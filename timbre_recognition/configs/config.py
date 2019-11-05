@@ -66,6 +66,8 @@ __C.DATASET = AttrDict()
 
 __C.DATASET.BUFFER_SIZE = 2000
 
+__C.DATASET.PATH = ''
+
 # ---------------------------------------------------------------------------- #
 # Model cofigurations
 # ---------------------------------------------------------------------------- #
@@ -116,9 +118,12 @@ __C.TRAIN.NUM_EPOCHS_PER_DECAY = 100
 __C.TRAIN.LOSS_MARGIN = 0.1
 
 # ---------------------------------------------------------------------------- #
-# Test cofigurations
+# Evaulate cofigurations
 # ---------------------------------------------------------------------------- #
 
+__C.EVALUATE = AttrDict()
+
+__C.EVALUATE.THRESHOLD = 0.1
 
 # ---------------------------------------------------------------------------- #
 # Deprecated options
@@ -127,14 +132,6 @@ __C.TRAIN.LOSS_MARGIN = 0.1
 # ---------------------------------------------------------------------------- #
 _DEPRECATED_KEYS = set(
   {
-    'FINAL_MSG',
-    'MODEL.DILATION',
-    'ROOT_GPU_ID',
-    'RPN.ON',
-    'TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED',
-    'TRAIN.DROPOUT',
-    'USE_GPU_NMS',
-    'TEST.NUM_TEST_IMAGES',
   }
 )
 
@@ -147,39 +144,6 @@ _DEPRECATED_KEYS = set(
 # instructions for how to edit the config file.
 # ---------------------------------------------------------------------------- #
 _RENAMED_KEYS = {
-  'EXAMPLE.RENAMED.KEY': 'EXAMPLE.KEY',  # Dummy example to follow
-  'MODEL.PS_GRID_SIZE': 'RFCN.PS_GRID_SIZE',
-  'MODEL.ROI_HEAD': 'FAST_RCNN.ROI_BOX_HEAD',
-  'MRCNN.MASK_HEAD_NAME': 'MRCNN.ROI_MASK_HEAD',
-  'TRAIN.DATASET': (
-    'TRAIN.DATASETS',
-    "Also convert to a tuple, e.g., " +
-    "'coco_2014_train' -> ('coco_2014_train',) or " +
-    "'coco_2014_train:coco_2014_valminusminival' -> " +
-    "('coco_2014_train', 'coco_2014_valminusminival')"
-  ),
-  'TRAIN.PROPOSAL_FILE': (
-    'TRAIN.PROPOSAL_FILES',
-    "Also convert to a tuple, e.g., " +
-    "'path/to/file' -> ('path/to/file',) or " +
-    "'path/to/file1:path/to/file2' -> " +
-    "('path/to/file1', 'path/to/file2')"
-  ),
-  'TEST.SCALES': (
-    'TEST.SCALE',
-    "Also convert from a tuple, e.g. (600, ), " +
-    "to a integer, e.g. 600."
-  ),
-  'TEST.DATASET': (
-    'TEST.DATASETS',
-    "Also convert from a string, e.g 'coco_2014_minival', " +
-    "to a tuple, e.g. ('coco_2014_minival', )."
-  ),
-  'TEST.PROPOSAL_FILE': (
-    'TEST.PROPOSAL_FILES',
-    "Also convert from a string, e.g. '/path/to/props.pkl', " +
-    "to a tuple, e.g. ('/path/to/props.pkl', )."
-  ),
 }
 
 
@@ -190,7 +154,6 @@ _RENAMED_KEYS = {
 # (e.g. from weights files) you can specify the renamed module below.
 # ---------------------------------------------------------------------------- #
 _RENAMED_MODULES = {
-    'utils.collections': 'detectron.utils.collections',
 }
 
 

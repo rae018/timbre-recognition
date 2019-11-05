@@ -14,6 +14,7 @@ from __future__ import unicode_literals
 
 import tensorflow as tf
 from timbre_recognition.ops.arg_scope import *
+from timbre_recognition.ops.triplet_loss import *
 from timbre_recognition.ops.l2_pool import l2_pool
 
 # Decorate ops with add_arg_scope
@@ -40,9 +41,8 @@ tf.math.sqrt
 def init_inception_resnet_kernels(shape, embed_dim):
   inputs = tf.zeros(shape)
   kernel_module = tf.Module()
-  embeddings = inception_resnet_v2(inputs, kernel_module, embed_dim=embed_dim)
-  batch_hard_triplet_loss(labels=[1], embeddings=embeddings, margin=0, squared=True, distance='mahalanobis', 
-                          kernel_module=kernel_module)
+  embeddings, endpoints = inception_resnet_v2(inputs, kernel_module, embed_dim=embed_dim)
+  batch_triplet_semihard_loss(labels=[1], embeddings=embeddings, margin=0, kernel_module=kernel_module)
   return kernel_module
 
 
@@ -253,15 +253,15 @@ def block_reduction_a(inputs, kernel_module, scope):
                    strides=[1, 1, 1, 1], padding='SAME'):
       with tf.name_scope('Branch_0'):
         branch_0 = tf.nn.conv2d(inputs, kernel_module.Branch_0.Conv2d_1a_20,
-                                strides=[1, 1, 4, 1], padding='VALID')
+                                strides=[1, 1, 2, 1], padding='VALID')
       with tf.name_scope('Branch_1'):
         branch_1 = tf.nn.conv2d(inputs, kernel_module.Branch_1.Conv2d_0a_1)
         branch_1 = tf.nn.conv2d(branch_1, kernel_module.Branch_1.Conv2d_0b_20)
         branch_1 = tf.nn.conv2d(branch_1, kernel_module.Branch_1.Conv2d_1a_20,
-                                strides=[1, 1, 4, 1], padding='VALID')
+                                strides=[1, 1, 2, 1], padding='VALID')
       with tf.name_scope('Branch_2'):
         branch_2 = tf.nn.max_pool(inputs, [1, 1, 20, 1], 
-                                  strides=[1, 1, 4, 1], padding='VALID')
+                                  strides=[1, 1, 2, 1], padding='VALID')
       combined = tf.concat(axis=3, values=[branch_0, branch_1, branch_2])
       return norm_and_activate(combined)
 
@@ -289,22 +289,22 @@ def block_reduction_b(inputs, kernel_module, scope):
                    strides=[1, 1, 1, 1], padding='SAME'):
       with tf.name_scope('Branch_0'):
         branch_0 = tf.nn.max_pool(inputs, [1, 1, 20, 1],
-                                  strides=[1, 1, 4, 1], padding='VALID')
+                                  strides=[1, 1, 2, 1], padding='VALID')
       with tf.name_scope('Branch_1'):
         branch_1 = tf.nn.conv2d(inputs, kernel_module.Branch_1.Conv2d_0a_1)
         branch_1 = norm_and_activate(branch_1)
         branch_1 = tf.nn.conv2d(branch_1, kernel_module.Branch_1.Conv2d_1a_20,
-                                strides=[1, 1, 4, 1], padding='VALID')
+                                strides=[1, 1, 2, 1], padding='VALID')
       with tf.name_scope('Branch_2'):
         branch_2 = tf.nn.conv2d(inputs, kernel_module.Branch_2.Conv2d_0a_1)
         branch_2 = norm_and_activate(branch_2)
         branch_2 = tf.nn.conv2d(branch_2, kernel_module.Branch_2.Conv2d_1a_20,
-                                strides=[1, 1, 4, 1], padding='VALID')
+                                strides=[1, 1, 2, 1], padding='VALID')
       with tf.name_scope('Branch_3'):
         branch_3 = tf.nn.conv2d(inputs, kernel_module.Branch_3.Conv2d_0a_1)
         branch_3 = tf.nn.conv2d(branch_3, kernel_module.Branch_3.Conv2d_0b_20)
         branch_3 = tf.nn.conv2d(branch_3, kernel_module.Branch_3.Conv2d_1a_20,
-                                strides=[1, 1, 4, 1], padding='VALID')
+                                strides=[1, 1, 2, 1], padding='VALID')
       combined = tf.concat(axis=3, values=[branch_0, branch_1, branch_2, branch_3])
       return norm_and_activate(combined)
 
@@ -375,7 +375,7 @@ def inception_resnet_v2_base(inputs, kernel_module, final_endpoint='Inception_Re
     with arg_scope([tf.nn.conv2d, tf.nn.avg_pool, tf.nn.max_pool],
                    strides=[1, 1, 1, 1], padding='SAME'):
       # 1 x n x 1
-      net = tf.nn.conv2d(inputs, stem_kernels.Conv2d_1a_20, strides=[1, 1, 4, 1], 
+      net = tf.nn.conv2d(inputs, stem_kernels.Conv2d_1a_20, strides=[1, 1, 6, 1], 
                          padding='VALID')
       net = norm_and_activate(net)
       if add_and_check_final('Conv2d_1a_20', net): return net, endpoints
@@ -393,11 +393,11 @@ def inception_resnet_v2_base(inputs, kernel_module, final_endpoint='Inception_Re
       # 1 x n x 64
       with tf.name_scope('Mixed_3a'):
         with tf.name_scope('Branch_0'):
-          branch_0 = tf.nn.max_pool(net, [1, 1, 20, 1], strides=[1, 1, 4, 1], 
+          branch_0 = tf.nn.max_pool(net, [1, 1, 20, 1], strides=[1, 1, 6, 1], 
                                     padding='VALID')
           branch_0 = norm_and_activate(branch_0)
         with tf.name_scope('Branch_1'):
-          branch_1 = tf.nn.conv2d(net, stem_kernels.Mixed_3a.Branch_1.Conv2d_0a_20, strides=[1, 1, 4, 1], 
+          branch_1 = tf.nn.conv2d(net, stem_kernels.Mixed_3a.Branch_1.Conv2d_0a_20, strides=[1, 1, 6, 1], 
                                   padding='VALID')
           branch_1 = norm_and_activate(branch_1)
         net = tf.concat(axis=3, values=[branch_0, branch_1])
@@ -408,7 +408,7 @@ def inception_resnet_v2_base(inputs, kernel_module, final_endpoint='Inception_Re
         with tf.name_scope('Branch_0'):
           branch_0 = tf.nn.conv2d(net, stem_kernels.Mixed_4a.Branch_0.Conv2d_0a_1)
           branch_0 = norm_and_activate(branch_0)
-          branch_0 = tf.nn.conv2d(branch_0, stem_kernels.Mixed_4a.Branch_0.Conv2d_1a_20, strides=[1, 1, 4, 1],
+          branch_0 = tf.nn.conv2d(branch_0, stem_kernels.Mixed_4a.Branch_0.Conv2d_1a_20, strides=[1, 1, 6, 1],
                                   padding='VALID')
           branch_0 = norm_and_activate(branch_0)
         with tf.name_scope('Branch_1'):
@@ -416,7 +416,7 @@ def inception_resnet_v2_base(inputs, kernel_module, final_endpoint='Inception_Re
           branch_1 = norm_and_activate(branch_1)
           branch_1 = tf.nn.conv2d(branch_1, stem_kernels.Mixed_4a.Branch_1.Conv2d_0b_20)
           branch_1 = norm_and_activate(branch_1)
-          branch_1 = tf.nn.conv2d(branch_1, stem_kernels.Mixed_4a.Branch_1.Conv2d_1a_20, strides=[1, 1, 4, 1],
+          branch_1 = tf.nn.conv2d(branch_1, stem_kernels.Mixed_4a.Branch_1.Conv2d_1a_20, strides=[1, 1, 6, 1],
                                   padding='VALID')
           branch_1 = norm_and_activate(branch_1)
         net = tf.concat(axis=3, values=[branch_0, branch_1])
@@ -426,10 +426,10 @@ def inception_resnet_v2_base(inputs, kernel_module, final_endpoint='Inception_Re
       with tf.name_scope('Mixed_5a'):
         with tf.name_scope('Branch_0'):
           branch_0 = tf.nn.conv2d(net, stem_kernels.Mixed_5a.Branch_0.Conv2d_1a_20,
-                                  strides=[1, 1, 4, 1], padding='VALID')
+                                  strides=[1, 1, 6, 1], padding='VALID')
           branch_0 = norm_and_activate(branch_0)
         with tf.name_scope('Branch_1'):
-          branch_1 = tf.nn.max_pool(net, [1, 1, 20, 1], strides=[1, 1, 4, 1],
+          branch_1 = tf.nn.max_pool(net, [1, 1, 20, 1], strides=[1, 1, 6, 1],
                                     padding='VALID')
         net = tf.concat(axis=3, values=[branch_0, branch_1])
         if add_and_check_final('Mixed_5a', net): return net, endpoints

@@ -3,10 +3,6 @@ import tensorflow as tf
 import librosa
 import re
 
-# ---------------------------------------------------------------------------- #
-# Model cofigurations
-# ---------------------------------------------------------------------------- #
-
 def load_wav_file_tf(path, desired_channels=-1):
   """Pure tensorflow implementation to load a single .wav file. 
 
@@ -23,7 +19,7 @@ def load_wav_file_tf(path, desired_channels=-1):
   """
   if not tf.is_tensor(path):
     path = tf.convert_to_tensor(path)
-  file = tf.io.read_file(tf.convert_to_tensor(path))
+  file = tf.io.read_file(path)
   y, sr = tf.audio.decode_wav(file, desired_channels=desired_channels)
   y = tf.expand_dims(y, 0)
   y = tf.expand_dims(y, 1)
@@ -75,7 +71,9 @@ def parse_esc50_filename(filename):
   return fold, src_number, take, target
 
 def load_esc50_dataset(path):
-  """Pure tensorflow implementation to load the entire esc50 dataset. 
+  """Pure tensorflow implementation to load the training set of the esc50 dataset. 
+  I defined the first four folds to be the training set, and the fifth fold to be
+  the test set.
   
   Args:
     - directory: A `string` containing the path to the dataset
@@ -87,7 +85,29 @@ def load_esc50_dataset(path):
     - labels: A `string` `Tensor` with shape [dataset_size, 4]
   
   """
-  filenames = tf.io.match_filenames_once(path + '*.wav').value()
+  
+  filenames = tf.io.match_filenames_once([path + '%d*.wav' % i for i in range(1,5)]).value()
+  data = tf.concat([load_wav_file_tf(x)[0] for x in filenames], axis=0)
+  labels = tf.convert_to_tensor([parse_esc50_filename(x.numpy()) for x in filenames])
+  return data, labels
+
+def load_esc50_test_set(path):
+  """Pure tensorflow implementation to load the test set of the esc50 dataset. 
+  I defined the first four folds to be the training set, and the fifth fold to be
+  the test set.
+  
+  Args:
+    - directory: A `string` containing the path to the dataset
+    
+  Returns:
+    - data: A `float32` `Tensor` with shape  [dataset_size, height, width,
+      channels]. Width is just the number of samples. The dataset_size should
+      be 2000, and channels and height should be 1.
+    - labels: A `string` `Tensor` with shape [dataset_size, 4]
+  
+  """
+  
+  filenames = tf.io.match_filenames_once(path + '5*.wav').value()
   data = tf.concat([load_wav_file_tf(x)[0] for x in filenames], axis=0)
   labels = tf.convert_to_tensor([parse_esc50_filename(x.numpy()) for x in filenames])
   return data, labels  

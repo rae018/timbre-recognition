@@ -18,7 +18,7 @@ def inception_resnet_v2_train(inputs, labels, kernel_module, step):
   with tf.GradientTape() as tape:
     embeddings, endpoints = inception_resnet_v2(inputs, kernel_module, cfg.MODEL.NUM_CLASSES, cfg.MODEL.EMBED_DIM)
     class_labels = tf.strings.to_number(labels[:, 3], tf.dtypes.int32)
-    triplet_loss = batch_hard_triplet_loss(class_labels, embeddings, cfg.TRAIN.LOSS_MARGIN, True, 'mahalanobis', kernel_module)
+    triplet_loss = batch_triplet_semihard_loss(class_labels, embeddings, cfg.TRAIN.LOSS_MARGIN, kernel_module)
     print("Loss:", triplet_loss.numpy())
     
   optimizer = tf.keras.optimizers.SGD(lr)

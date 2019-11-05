@@ -7,9 +7,11 @@ pip-selfcheck.json
 .ipynb_checkpoints/
 timbre_recognition/datasets/
 timbre_recognition/lib/
+timbre_recognition/include/
 timbre_recognition/bin/
 timbre_recognition/share/
 timbre_recognition/etc/
+timbre_recognition/models/
 proposal/
 references/
 thesis/

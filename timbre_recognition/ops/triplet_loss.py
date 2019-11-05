@@ -4,6 +4,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import tensorflow as tf
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import array_ops
+from tensorflow.python.framework import dtypes
 
 def _pairwise_l2_distances(embeddings, squared=False):
   """Compute the 2-D matrix of l2 distances between all the embeddings.
@@ -54,13 +57,13 @@ def init_distance_metric(embed_dim):
     initial_value=tf.random.uniform(shape=[embed_dim, embed_dim]), name='DistanceMetric')
   return kernel_module
 
-def _pairwise_mahalanobis_distances(embeddings, kernel_module, squared=False):
+def pairwise_mahalanobis_distances(embeddings, kernel_module, squared=False):
   """Compute the 2-D matrix of mahalanobis distances between all the embeddings.
   
   Args:
     - embeddings: A 2-D `Tensor` of shape [batch_size, embed_dim]
     - squared: A `bool`. If True, output is the pairwise equared euclidean
-      distance matrix. If Flase, output is the pairwise euclidean distance
+      distance matrix. If False, output is the pairwise euclidean distance
       matrix.
     
     Returns:
@@ -85,7 +88,7 @@ def _pairwise_mahalanobis_distances(embeddings, kernel_module, squared=False):
   # Compute the pairwise distance matrix:
   # a'Ma - a'Mb - b'Ma + b'Mb
   # shape [batch_size, batch_size]
-  distances = tf.expand_dims(square_norm, 1) - 2.0 * dot_product + tf.expand_dims(square_norm, 0)
+  distances = tf.expand_dims(square_norm, 1) - dot_product - tf.transpose(dot_product) + tf.expand_dims(square_norm, 0)
   
   # Because of computation errors, some distances might be negative so we put everything >= 0.0
   distances = tf.maximum(distances, 0.0)
@@ -93,7 +96,7 @@ def _pairwise_mahalanobis_distances(embeddings, kernel_module, squared=False):
   if not squared:
     # Because the gradient of sqrt is infinite when distances == 0.0 (ex: on the diagonal)
     # we need to add a small epsilon where distances == 0.0
-    mask = tf.dtypes.case(tf.equal(distances, 0.0), tf.float32)
+    mask = tf.dtypes.cast(tf.equal(distances, 0.0), tf.float32)
     distances = distances + mask * 1e-16
 
     distances = tf.sqrt(distances)
@@ -101,10 +104,10 @@ def _pairwise_mahalanobis_distances(embeddings, kernel_module, squared=False):
     # Correct the epsilon added: set the distances on the mask to be exactly 0.0
     distances = distances * (1.0 - mask)
 
-  return distances
+  return distances - tf.linalg.band_part(distances, 0, 0)
 
 
-def _get_anchor_positive_triplet_mask(labels):
+def get_anchor_positive_triplet_mask(labels):
   """Return a 2-D mask where mask[a, p] is True iff a and p are distinct and have same label.
 
   Args:
@@ -127,7 +130,7 @@ def _get_anchor_positive_triplet_mask(labels):
   return mask
 
 
-def _get_anchor_negative_triplet_mask(labels):
+def get_anchor_negative_triplet_mask(labels):
   """Return a 2-D mask where mask[a, n] is True iff a and n have distinct labels.
 
   Args:
@@ -145,7 +148,7 @@ def _get_anchor_negative_triplet_mask(labels):
   return mask
 
 
-def _get_triplet_mask(labels):
+def get_triplet_mask(labels):
   """Return a 3-D mask where mask[a, p, n] is True iff the triplet (a, p, n) is valid.
   A triplet (i, j, k) is valid if:
     - i, j, k are distinct
@@ -192,7 +195,7 @@ def batch_all_triplet_loss(labels, embeddings, margin, squared=False):
     - triplet_loss: scalar tensor containing the triplet loss
   """
   # Get the pairwise distance matrix
-  pairwise_dist = _pairwise_l2_distances(embeddings, squared=squared)
+  pairwise_dist = pairwise_l2_distances(embeddings, squared=squared)
 
   # shape [batch_size, batch_size, 1]
   anchor_positive_dist = tf.expand_dims(pairwise_dist, 2)
@@ -209,7 +212,7 @@ def batch_all_triplet_loss(labels, embeddings, margin, squared=False):
 
   # Put to zero the invalid triplets
   # (where label(a) != label(p) or label(n) == label(a) or a == p)
-  mask = _get_triplet_mask(labels)
+  mask = get_triplet_mask(labels)
   mask = tf.dtypes.cast(mask, tf.float32)
   triplet_loss = tf.multiply(mask, triplet_loss)
 
@@ -228,7 +231,7 @@ def batch_all_triplet_loss(labels, embeddings, margin, squared=False):
   return triplet_loss, fraction_positive_triplets
 
 
-def batch_hard_triplet_loss(labels, embeddings, margin, squared=False, distance='euclidian', kernel_module=None):
+def batch_hard_triplet_loss(labels, embeddings, margin, kernel_module=None):
   """Build the triplet loss over a batch of embeddings.
   For each anchor, we get the hardest positive and hardest negative to form a triplet.
 
@@ -247,14 +250,11 @@ def batch_hard_triplet_loss(labels, embeddings, margin, squared=False, distance=
     - triplet_loss: scalar tensor containing the triplet loss
   """
   # Get the pairwise distance matrix
-  if distance == 'mahalanobis':
-    pairwise_dist = _pairwise_mahalanobis_distances(embeddings, kernel_module, squared=squared)
-  else:
-    pairwise_dist = _pairwise_l2_distances(embeddings, squared=squared)
+  pairwise_dist = pairwise_mahalanobis_distances(embeddings, kernel_module, squared=squared)
 
   # For each anchor, get the hardest positive
   # First, we need to get a mask for every valid positive (they should have same label)
-  mask_anchor_positive = _get_anchor_positive_triplet_mask(labels)
+  mask_anchor_positive = get_anchor_positive_triplet_mask(labels)
   mask_anchor_positive = tf.dtypes.cast(mask_anchor_positive, tf.float32)
 
   # We put to 0 any element where (a, p) is not valid (valid if a != p and label(a) == label(p))
@@ -266,7 +266,7 @@ def batch_hard_triplet_loss(labels, embeddings, margin, squared=False, distance=
 
   # For each anchor, get the hardest negative
   # First, we need to get a mask for every valid negative (they should have different labels)
-  mask_anchor_negative = _get_anchor_negative_triplet_mask(labels)
+  mask_anchor_negative = get_anchor_negative_triplet_mask(labels)
   mask_anchor_negative = tf.dtypes.cast(mask_anchor_negative, tf.float32)
 
   # We add the maximum value in each row to the invalid negatives (label(a) == label(n))
@@ -282,6 +282,84 @@ def batch_hard_triplet_loss(labels, embeddings, margin, squared=False, distance=
 
   # Get final mean triplet loss
   triplet_loss = tf.reduce_mean(triplet_loss)
+
+  return triplet_loss
+
+def batch_triplet_semihard_loss(labels, embeddings, margin, kernel_module=None):
+  """Computes the triplet loss with semi-hard negative mining.
+  The loss encourages the positive distances (between a pair of embeddings with
+  the same labels) to be smaller than the minimum negative distance among
+  which are at least greater than the positive distance plus the margin constant
+  (called semi-hard negative) in the mini-batch. If no such negative exists,
+  uses the largest negative distance instead.
+  See: https://arxiv.org/abs/1503.03832.
+  Args:
+    labels: 1-D tf.int32 `Tensor` with shape [batch_size] of
+      multiclass integer labels.
+    embeddings: 2-D float `Tensor` of embedding vectors. Embeddings should
+      be l2 normalized.
+    margin: Float, margin term in the loss definition.
+  Returns:
+    triplet_loss: tf.float32 scalar.
+  """
+  # Reshape [batch_size] label tensor to a [batch_size, 1] label tensor.
+  lshape = array_ops.shape(labels)
+  assert lshape.shape == 1
+  labels = array_ops.reshape(labels, [lshape[0], 1])
+
+  # Build pairwise squared distance matrix.
+  pdist_matrix = pairwise_mahalanobis_distances(embeddings, kernel_module, squared=True)
+  # Build pairwise binary adjacency matrix.
+  adjacency = math_ops.equal(labels, array_ops.transpose(labels))
+  # Invert so we can select negatives only.
+  adjacency_not = math_ops.logical_not(adjacency)
+
+  batch_size = array_ops.size(labels)
+
+  # Compute the mask.
+  pdist_matrix_tile = array_ops.tile(pdist_matrix, [batch_size, 1])
+  mask = math_ops.logical_and(
+    array_ops.tile(adjacency_not, [batch_size, 1]),
+    math_ops.greater(
+      pdist_matrix_tile, array_ops.reshape(
+        array_ops.transpose(pdist_matrix), [-1, 1])))
+  mask_final = array_ops.reshape(
+    math_ops.greater(
+      math_ops.reduce_sum(
+        math_ops.cast(mask, dtype=dtypes.float32), 1, keepdims=True),
+    0.0), [batch_size, batch_size])
+  mask_final = array_ops.transpose(mask_final)
+
+  adjacency_not = math_ops.cast(adjacency_not, dtype=dtypes.float32)
+  mask = math_ops.cast(mask, dtype=dtypes.float32)
+
+  # negatives_outside: smallest D_an where D_an > D_ap.
+  negatives_outside = array_ops.reshape(
+    masked_minimum(pdist_matrix_tile, mask), [batch_size, batch_size])
+  negatives_outside = array_ops.transpose(negatives_outside)
+
+  # negatives_inside: largest D_an.
+  negatives_inside = array_ops.tile(
+    masked_maximum(pdist_matrix, adjacency_not), [1, batch_size])
+  semi_hard_negatives = array_ops.where(
+    mask_final, negatives_outside, negatives_inside)
+
+  loss_mat = math_ops.add(margin, pdist_matrix - semi_hard_negatives)
+
+  mask_positives = math_ops.cast(
+    adjacency, dtype=dtypes.float32) - array_ops.diag(
+      array_ops.ones([batch_size]))
+
+  # In lifted-struct, the authors multiply 0.5 for upper triangular
+  #   in semihard, they take all positive pairs except the diagonal.
+  num_positives = math_ops.reduce_sum(mask_positives)
+
+  triplet_loss = math_ops.truediv(
+    math_ops.reduce_sum(
+      math_ops.maximum(
+        math_ops.multiply(loss_mat, mask_positives), 0.0)),
+    num_positives,
+    name='triplet_semihard_loss')
 
   return triplet_loss
   

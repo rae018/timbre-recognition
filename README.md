@@ -16,5 +16,4 @@ If a flie or directory isn't in this repository it's because it's ignored.
 - **inception_v4_test.ipynb**: 
 - **io_vis_examples.ipynb**:
 - **yaml_test.ipynb**:
-- **main.py**: 
-- **requirements.txt**: viretualenv dependancies for the project
+- **requirements3.7.txt**: viretualenv dependancies for the project

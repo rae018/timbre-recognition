@@ -1,7 +1,6 @@
 MODEL:
   OUTPUT_DIR: timbre_recognition/models/inception_resnet_v2/esc-50/ckpts/
   CONV_BODY: inception_v4
-  NUM_CLASSES: 50
   EMBED_DIM: 128
 TRAIN:
   TRAINING: True
@@ -12,5 +11,6 @@ TRAIN:
 DATASET:
   BUFFER_SIZE: 200
   PATH: timbre_recognition/datasets/ESC-50/audio/
+  NUM_CLASSES: 50
 EVALUATE:
   THRESHOLD: 0.5

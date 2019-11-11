@@ -12,6 +12,7 @@ from ast import literal_eval
 import numpy as np
 import yaml
 
+
 class AttrDict(dict):  
   IMMUTABLE = '__immutable__'
   def __init__(self, *args, **kwargs):
@@ -68,6 +69,9 @@ __C.DATASET.BUFFER_SIZE = 2000
 
 __C.DATASET.PATH = ''
 
+# Number of classes is the dataset
+__C.DATASET.NUM_CLASSES = -1
+
 # ---------------------------------------------------------------------------- #
 # Model cofigurations
 # ---------------------------------------------------------------------------- #
@@ -79,9 +83,6 @@ __C.MODEL.OUTPUT_DIR = ''
 
 # The backbone conv body of the network
 __C.MODEL.CONV_BODY = ''
-
-# Number of classes is the dataset
-__C.MODEL.NUM_CLASSES = -1
 
 __C.MODEL.EMBED_DIM = 128
 

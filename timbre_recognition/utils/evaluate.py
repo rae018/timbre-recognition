@@ -33,6 +33,7 @@ def is_congruent(x, y, M, threshold):
 
   return distance < threshold
   
+  
 def restore_kernel_module_from_checkpoint(network, dataset, checkpoint):
   shape = []
   if (dataset == 'esc-50'):
@@ -43,6 +44,7 @@ def restore_kernel_module_from_checkpoint(network, dataset, checkpoint):
   ckpt.restore(checkpoint)
   
   return kernel_module
+
 
 def choose_negatives(keep_mask, num_keep):
   """Randomly selects negative pairs to use for evaluation
@@ -72,6 +74,7 @@ def choose_negatives(keep_mask, num_keep):
     keep_mask[i, j] = 1
   
   return tf.convert_to_tensor(keep_mask)
+  
   
 def compute_accuracy(distances, truth_mask, keep_mask, threshold):
   """Returns the percent accuracy of distances under threshold, used truth_mask
@@ -103,6 +106,7 @@ def compute_accuracy(distances, truth_mask, keep_mask, threshold):
   accuracy = tf.reduce_sum(correct) / tf.reduce_sum(keep_mask)
  
   return accuracy
+  
   
 def evaluate_model(network, dataset, path, kernel_module, threshold):
   """Evaluates the accuracy of a model with test data.
@@ -161,5 +165,3 @@ def evaluate_model(network, dataset, path, kernel_module, threshold):
       accuracies += [accuracy]
     
     return accuracies
-
-

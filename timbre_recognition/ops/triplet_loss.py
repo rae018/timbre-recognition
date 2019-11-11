@@ -57,11 +57,56 @@ def init_distance_metric(embed_dim):
     initial_value=tf.random.uniform(shape=[embed_dim, embed_dim]), name='DistanceMetric')
   return kernel_module
 
+def pairwise_mahalanobis_distances(embeddings, class_centers, kernel_module, squared=False):
+  """Compute the 2-D matrix of mahalanobis distances between embeddings and class centers
+  
+  Args:
+    - embeddings: A 2-D `Tensor` of shape [batch_size, embed_dim]
+    - class_centers: A 2-D `Tensor` of shape [num_classes, embed_dim]
+    - kernel_module: A `tf.Module` for distance metric
+    - squared: A `bool`. If True, output is the pairwise equared euclidean
+      distance matrix. If False, output is the pairwise euclidean distance
+      matrix.
+    
+    Returns:
+      - distances: A `Tensor` of shape [batch_size, num_classes] containing
+        pairwise mahalanobis distances.
+    """
+  embed_dim = embeddings.get_shape()[1]
+  M = getattr(kernel_module, 'MahalanobisDistance').Distance_Metric # At this point M should be set
+  
+  # (a-b)'M(a-b) = a'Ma - a'Mb - b'Ma + b'Mb
+  # a's are the embeddings, b's are the class centers
+  aMb = tf.matmul(tf.matmul(embeddings, M), tf.transpose(class_centers))
+  bMa = tf.transpose(tf.matmul(tf.matmul(class_centers, M), tf.transpose(embeddings)))
+  aMa = tf.linalg.tensor_diag_part(tf.matmul(tf.matmul(embeddings, M), tf.transpose(embeddings)))
+  bMb = tf.linalg.tensor_diag_part(tf.matmul(tf.matmul(class_centers, M), tf.transpose(class_centers)))
+  
+  distances = tf.expand_dims(aMa, 1) - aMb - bMa + tf.expand_dims(bMb, 0)
+  
+  # Because of computation errors, some distances might be negative so we put everything >= 0.0
+  distances = tf.maximum(distances, 0.0)
+  
+  if not squared:
+    # Because the gradient of sqrt is infinite when distances == 0.0 (ex: on the diagonal)
+    # we need to add a small epsilon where distances == 0.0
+    mask = tf.dtypes.cast(tf.equal(distances, 0.0), tf.float32)
+    distances = distances + mask * 1e-16
+
+    distances = tf.sqrt(distances)
+
+    # Correct the epsilon added: set the distances on the mask to be exactly 0.0
+    distances = distances * (1.0 - mask)
+
+  return distances
+  
+  
 def pairwise_mahalanobis_distances(embeddings, kernel_module, squared=False):
   """Compute the 2-D matrix of mahalanobis distances between all the embeddings.
   
   Args:
     - embeddings: A 2-D `Tensor` of shape [batch_size, embed_dim]
+    - kernel_module: A `tf.Module` for distance metric
     - squared: A `bool`. If True, output is the pairwise equared euclidean
       distance matrix. If False, output is the pairwise euclidean distance
       matrix.
@@ -70,7 +115,6 @@ def pairwise_mahalanobis_distances(embeddings, kernel_module, squared=False):
       - distances: A `Tensor` of shape [batch_size, batch_size] containing
         pairwise mahalanobis distances.
     """
-  
   embed_dim = embeddings.get_shape()[1] # Possibly replace with cfg.embed_dim
   
   if getattr(kernel_module, 'MahalanobisDistance', None) is None:
@@ -104,7 +148,7 @@ def pairwise_mahalanobis_distances(embeddings, kernel_module, squared=False):
     # Correct the epsilon added: set the distances on the mask to be exactly 0.0
     distances = distances * (1.0 - mask)
 
-  return distances - tf.linalg.band_part(distances, 0, 0)
+  return distances
 
 
 def get_anchor_positive_triplet_mask(labels):
@@ -285,6 +329,7 @@ def batch_hard_triplet_loss(labels, embeddings, margin, kernel_module=None):
 
   return triplet_loss
 
+
 def batch_triplet_semihard_loss(labels, embeddings, margin, kernel_module=None):
   """Computes the triplet loss with semi-hard negative mining.
   The loss encourages the positive distances (between a pair of embeddings with
@@ -364,9 +409,9 @@ def batch_triplet_semihard_loss(labels, embeddings, margin, kernel_module=None):
   return triplet_loss
   
   
-  # ==============================================================================
-  # Straight from TensorFlow source:
-  # https://github.com/tensorflow/tensorflow/blob/r1.12/tensorflow/contrib/losses/python/metric_learning/metric_loss_ops.py
+# ==============================================================================
+# Straight from TensorFlow source:
+# https://github.com/tensorflow/tensorflow/blob/r1.12/tensorflow/contrib/losses/python/metric_learning/metric_loss_ops.py
   
   
 def pairwise_distance(feature, squared=False):

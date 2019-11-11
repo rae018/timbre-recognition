@@ -24,7 +24,6 @@ from timbre_recognition.configs.config import *
 import tensorflow as tf
 
 config_file = 'timbre_recognition/configs/esc50.yaml'
-data_directory = 'timbre_recognition/datasets/ESC-50/audio/'
 
 def main():
   print('Loading configuration file...')

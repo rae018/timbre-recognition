@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+
 def print_module_tree(module, level=0):
   offset = '  ' * level
   for k, v in module.__dict__.items():
@@ -8,7 +9,8 @@ def print_module_tree(module, level=0):
       print_module_tree(v, level+1)
     elif tf.is_tensor(v):
       print(offset + k)
-      
+  
+  
 def compute_num_params(module):
   """Counts the number of parameters in a module
   

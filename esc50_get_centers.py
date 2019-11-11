@@ -30,24 +30,10 @@ def main():
   merge_cfg_from_file(config_file)
   print('Configurations loaded')
   
+  checkpoint = cfg.MODEL.OUTPUT_DIR + 'ckpt-800'
+  kernel_module = restore_kernel_module_from_checkpoint('inception_resnet_v2', 'esc-50', checkpoint)
   data, labels = load_esc50_dataset(cfg.DATASET.PATH)
-  kernel_module = tf.Module()
-  ckpt = tf.train.Checkpoint(kernel_module=kernel_module)
-  manager = tf.train.CheckpointManager(ckpt, cfg.MODEL.OUTPUT_DIR, max_to_keep=None)
-  
-  print('STARTING TRAINING')
-  for epoch in range(cfg.TRAIN.NUM_EPOCHS):
-    dataset = tf.data.Dataset.from_tensor_slices((data, labels)).shuffle(cfg.DATASET.BUFFER_SIZE).batch(cfg.TRAIN.BATCH_SIZE)
-    dataset_iter = iter(dataset)
-    batch_data, batch_labels = next(dataset_iter, (None, None))
-    while batch_data is not None:
-      inception_resnet_v2_train(batch_data, batch_labels, kernel_module, epoch)
-      batch_data, batch_labels = next(dataset_iter, (None, None))
-    ckpt = tf.train.Checkpoint(kernel_module=kernel_module)
-    manager.save()
-    print('Checkpoint for epoch {} saved'.format(epoch))
-  print('TRAINING COMPLETE')
-  
+   
   print('FINDING CLASS CENTERS')
   init = tf.zeros([1, 128])
   class_centers = tf.RaggedTensor.from_value_rowids(values=init, value_rowids=tf.constant([50]))
@@ -56,15 +42,34 @@ def main():
   batch_data, batch_labels = next(dataset_iter, (None, None))
   while batch_data is not None:
     class_centers = add_batch_embeddings(batch_data, batch_labels, kernel_module, class_centers)
+    batch_data, batch_labels = next(dataset_iter, (None, None))
   class_centers = tf.reduce_mean(class_centers, 1)[:50]
   print('CLASS CENTERS COMPLETE')
-   
+  
   print('STARTING EVALUATION')
-  thresholds = tf.linspace(0.0, 2.0, 21).numpy()
-  accuracies = evaluate_model('inception_resnet_v2', 'esc-50', cfg.DATASET.PATH, kernel_module, thresholds)
-  for i in range(len(thresholds)):
-    print('Accuracy for threshold {}: {}'.format(thresholds[i], accuracies[i]))
+  data, labels = load_esc50_test_set(cfg.DATASET.PATH)
+  labels = tf.strings.to_number(labels[:, 3], tf.dtypes.int32)
+  
+  dataset = tf.data.Dataset.from_tensor_slices((data, labels)).batch(cfg.TRAIN.BATCH_SIZE)
+  dataset_iter = iter(dataset)
+  batch_data, batch_labels = next(dataset_iter, (None, None))
+  
+  accuracies = []
+  
+  while batch_data is not None:
+    embeddings, endpoints = inception_resnet_v2(batch_data, kernel_module, embed_dim=cfg.MODEL.EMBED_DIM)
+    distances = pairwise_mahalanobis_distances(embeddings, class_centers, kernel_module)
+    # shape [batch_size]
+    predictions = tf.argsort(distances, 1)[:,0] # 0 index holds class center closest to embedding, taken along entire batch
+    results = tf.math.equal(batch_labels, predictions)
+    num_correct = tf.math.count_nonzero(results)
+    batch_accuracy = num_correct / len(results)
+    accuracies += [batch_accuracy]
+    
+    batch_data, batch_labels = next(dataset_iter, (None, None))
+  accuracy = tf.reduce_mean(accuracies)
   print('EVAULATION COMPLETE')
+  print("Accuracy: {}".format(accuracy))
     
 
 if __name__ == '__main__':

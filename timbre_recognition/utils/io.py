@@ -3,6 +3,7 @@ import tensorflow as tf
 import librosa
 import re
 
+
 def load_wav_file_tf(path, desired_channels=-1):
   """Pure tensorflow implementation to load a single .wav file. 
 
@@ -24,6 +25,7 @@ def load_wav_file_tf(path, desired_channels=-1):
   y = tf.expand_dims(y, 0)
   y = tf.expand_dims(y, 1)
   return y, sr
+
 
 def load_wav_file_librosa(path, sr=None, mono=False):
   """Librosa implementation to load a single .wav file. The main reason of 
@@ -48,6 +50,7 @@ def load_wav_file_librosa(path, sr=None, mono=False):
   y = tf.expand_dims(y, 3)
   return y, sr
 
+
 def parse_esc50_filename(filename):
   """Parses a ESC-50 data filename into its fold, source number, take, and
   target values.
@@ -70,6 +73,7 @@ def parse_esc50_filename(filename):
     fold, src_number, take, target = re.split('-|\.', filename)[:4]
   return fold, src_number, take, target
 
+
 def load_esc50_dataset(path):
   """Pure tensorflow implementation to load the training set of the esc50 dataset. 
   I defined the first four folds to be the training set, and the fifth fold to be
@@ -85,11 +89,11 @@ def load_esc50_dataset(path):
     - labels: A `string` `Tensor` with shape [dataset_size, 4]
   
   """
-  
   filenames = tf.io.match_filenames_once([path + '%d*.wav' % i for i in range(1,5)]).value()
   data = tf.concat([load_wav_file_tf(x)[0] for x in filenames], axis=0)
   labels = tf.convert_to_tensor([parse_esc50_filename(x.numpy()) for x in filenames])
   return data, labels
+
 
 def load_esc50_test_set(path):
   """Pure tensorflow implementation to load the test set of the esc50 dataset. 

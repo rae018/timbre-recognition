@@ -58,7 +58,7 @@ def main():
   
   while batch_data is not None:
     embeddings, endpoints = inception_resnet_v2(batch_data, kernel_module, embed_dim=cfg.MODEL.EMBED_DIM)
-    distances = pairwise_mahalanobis_distances(embeddings, class_centers, kernel_module)
+    distances = pairwise_mahalanobis_distances_classes(embeddings, class_centers, kernel_module)
     # shape [batch_size]
     predictions = tf.argsort(distances, 1)[:,0] # 0 index holds class center closest to embedding, taken along entire batch
     results = tf.math.equal(batch_labels, predictions)

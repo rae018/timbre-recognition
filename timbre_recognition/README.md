@@ -1,8 +1,9 @@
-###### In this directory (/timbre_recognition/):
+##### In this directory (/timbre_recognition/):
 If a file or directory isn't here it's because it's ignored.
 - **bin/**: virtualenv folder
 - **configs/**: contains network parameter configurations 
 - **datasets/**: contains various datasets used for training and testing
+- **docs/**: contains non-existent documentation
 - **include/**: virtualenv folder
 - **lib/**: virtualenv folder
 - **modeling/**: contains main network models (backbones, layers, and modules)

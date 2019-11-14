@@ -17,7 +17,7 @@ def inception_resnet_v2_train(inputs, labels, kernel_module, step):
     cfg.TRAIN.BASE_LR, decay_steps, cfg.TRAIN.LR_DECAY_RATE, staircase=True)(step)
 
   with tf.GradientTape() as tape:
-    embeddings, endpoints = inception_resnet_v2(inputs, kernel_module, cfg.MODEL.NUM_CLASSES, cfg.MODEL.EMBED_DIM)
+    embeddings, endpoints = inception_resnet_v2(inputs, kernel_module, cfg.DATASET.NUM_CLASSES, cfg.MODEL.EMBED_DIM)
     class_labels = tf.strings.to_number(labels[:, 3], tf.dtypes.int32)
     triplet_loss = batch_triplet_semihard_loss(class_labels, embeddings, cfg.TRAIN.LOSS_MARGIN, kernel_module)
     print("Loss:", triplet_loss.numpy())
@@ -34,7 +34,7 @@ def add_batch_embeddings(batch_data, batch_labels, kernel_module, class_centers)
   order = tf.argsort(class_labels)
   values = tf.gather(embeddings, order)
   rowids = tf.gather(class_labels, order)
-  # This is to enfore the first dimension is 50, instead of just the highest
+  # This is to enforce the first dimension is 50, instead of just the highest
   # class number in the batch
   extension = tf.zeros([1, cfg.MODEL.EMBED_DIM])
   values = tf.concat([values, extension], 0)

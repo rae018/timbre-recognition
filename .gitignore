@@ -1,6 +1,7 @@
 .DS_Store
 .Python
 *.swp
+*.ipynb
 __pycache__
 pyvenv.cfg
 pip-selfcheck.json

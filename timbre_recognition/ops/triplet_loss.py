@@ -57,7 +57,7 @@ def init_distance_metric(embed_dim):
     initial_value=tf.random.uniform(shape=[embed_dim, embed_dim]), name='DistanceMetric')
   return kernel_module
 
-def pairwise_mahalanobis_distances(embeddings, class_centers, kernel_module, squared=False):
+def pairwise_mahalanobis_distances_classes(embeddings, class_centers, kernel_module, squared=False):
   """Compute the 2-D matrix of mahalanobis distances between embeddings and class centers
   
   Args:
